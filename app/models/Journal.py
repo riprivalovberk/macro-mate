@@ -1,10 +1,18 @@
-from dataclasses import dataclass, field
-from typing import List
+from pydantic import BaseModel
+from datetime import date
+
+from sqlalchemy.orm import relationship
+
+from app.database import Base
 import uuid
+from sqlalchemy import Column, ForeignKey, Integer, String, Float, Date, Text, UUID
 
-from app.models import DailyEntry
 
-@dataclass
-class Journal:
-    owner_id: uuid.UUID
-    entries: List[DailyEntry] = field(default_factory=list)  # Future: Store Daily Entry IDs, so we can load subsets. field(default_factory=list) ensures that each instance of the data class gets its own separate list
+class Journal(Base):
+    __tablename__ = 'journals'
+
+    entries = relationship("Day", back_populates="journal")  # Relationship to entries
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    weight = Column(Float)

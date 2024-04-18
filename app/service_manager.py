@@ -1,5 +1,6 @@
 from app.repositories.JournalRepository import JournalRepository
-from app.services import JournalService
+from app.services.JournalService import JournalService
+from app.database import get_db
 
 
 class ServiceManager:
@@ -8,6 +9,8 @@ class ServiceManager:
     @classmethod
     def get_journal_service(cls) -> JournalService:
         if cls._journal_service_instance is None:
-            journal_repository = JournalRepository()
+            # Obtain a database session from the scoped session
+            db_session = get_db()
+            journal_repository = JournalRepository(db_session)
             cls._journal_service_instance = JournalService(journal_repository)
         return cls._journal_service_instance
