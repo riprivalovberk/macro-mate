@@ -18,6 +18,7 @@ class Day(Base):
     journal_id = Column(UUID(as_uuid=True), ForeignKey('journals.id'))
 
     date = Column(Date, unique=True)
+    daily_calorie_goal = Column(Float)
     total_proteins = Column(Float)
     total_carbohydrates = Column(Float)
     total_fats = Column(Float)

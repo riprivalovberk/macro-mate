@@ -23,7 +23,7 @@ async def read_item(name: str):
 @router.get("/users/{user_id}/journal/")
 async def get_journal(user_id: UUID, journal_service: JournalService = Depends(ServiceManager.get_journal_service)):
     try:
-        return journal_service.get_journal_for_user(user_id)
+        return journal_service.get_journal(user_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -15,4 +15,5 @@ class Journal(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    weight = Column(Float)
+    streak = Column(Integer)
+    weight_goal = Column(Float, nullable=True)

@@ -15,4 +15,3 @@ class UserInfo(Base):
     email = Column(String(100), unique=True)  # Assuming email should be unique
     height = Column(Float)  # Store height as a floating-point number
     sex = Column(String(1))  # M/F
-    weight_goal = Column(Float, nullable=True)
