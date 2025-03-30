@@ -35,3 +35,10 @@ async def add_journal_entry(user_id: UUID, entry: Entry,
         return journal_service.add_entry_to_journal(user_id, entry)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/signup")
+async def signup(UserInfo: UserInfo, userXXXX_service: JournalService = Depends(ServiceManager.get_journal_service)):
+    try:
+        return journal_service.add_entry_to_journal(user_id, entry)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

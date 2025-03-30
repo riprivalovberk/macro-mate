@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import date
 
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, object_session
 
 from app.database import Base
 import uuid
@@ -26,3 +26,6 @@ class Day(Base):
     total_water_intake = Column(Float)
     weight = Column(Float)
     workout_completed = Column(Boolean)
+
+    def __repr__(self):
+        return f'Id: {self.id}, Date: {self.date}, Journal: {self.journal}, Date: {self.date}, Daily calories goal: {self}'

@@ -11,7 +11,7 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Float, Date, Text, U
 class Journal(Base):
     __tablename__ = 'journals'
 
-    entries = relationship("Day", back_populates="journal")  # Relationship to entries
+    days = relationship("Day", back_populates="journal")  # Relationship to entries
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 

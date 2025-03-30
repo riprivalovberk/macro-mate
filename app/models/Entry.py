@@ -24,5 +24,6 @@ class Entry(Base):
     water_intake = Column(Float)
     notes = Column(Text)
 
+
     def __repr__(self):
         return f"({self.entry_id}, {self.date}, {self.name})"
