@@ -136,6 +136,26 @@ describe('quickFoods', () => {
     expect(foods[0].kcal).toBe(250);
   });
 
+  it('ranks foods eaten at the selected meal first', async () => {
+    // Oatmeal: 2x breakfast. Chicken bowl: 3x lunch. Yogurt: 1x breakfast (most recent).
+    await addEntry(makeEntry({ name: 'Oatmeal', meal: 'breakfast', createdAt: 1 }));
+    await addEntry(makeEntry({ name: 'Oatmeal', meal: 'breakfast', createdAt: 2 }));
+    await addEntry(makeEntry({ name: 'Chicken bowl', meal: 'lunch', createdAt: 3 }));
+    await addEntry(makeEntry({ name: 'Chicken bowl', meal: 'lunch', createdAt: 4 }));
+    await addEntry(makeEntry({ name: 'Chicken bowl', meal: 'lunch', createdAt: 5 }));
+    await addEntry(makeEntry({ name: 'Yogurt', meal: 'breakfast', createdAt: 6 }));
+
+    const breakfast = await quickFoods(20, 'breakfast');
+    expect(breakfast.map((f) => f.name)).toEqual(['Oatmeal', 'Yogurt', 'Chicken bowl']);
+
+    const lunch = await quickFoods(20, 'lunch');
+    expect(lunch[0].name).toBe('Chicken bowl');
+
+    // without a meal, overall frequency still wins
+    const any = await quickFoods(20);
+    expect(any[0].name).toBe('Chicken bowl');
+  });
+
   it('respects the limit', async () => {
     for (let i = 0; i < 25; i++) await addEntry(makeEntry({ name: `Food ${i}`, createdAt: i }));
     const foods = await quickFoods(5);

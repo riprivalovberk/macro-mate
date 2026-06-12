@@ -34,36 +34,51 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
   const [step, setStep] = useState<Step>('choose');
   const [meal, setMeal] = useState<Meal>(initialMeal);
   const [error, setError] = useState('');
-  const [image, setImage] = useState<EncodedImage | null>(null);
-  const [preview, setPreview] = useState('');
+  const [images, setImages] = useState<EncodedImage[]>([]);
   const [hint, setHint] = useState('');
   const [description, setDescription] = useState('');
   const [items, setItems] = useState<EditableFood[]>([]);
   const [notes, setNotes] = useState('');
   const [quick, setQuick] = useState<QuickFood[]>([]);
   const [savedFlash, setSavedFlash] = useState('');
+  const [refineText, setRefineText] = useState('');
+  const [refineImages, setRefineImages] = useState<EncodedImage[]>([]);
 
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
+  // Where the next picked image(s) go: the main set, or the review-step refine set.
+  const pickTarget = useRef<'main' | 'refine'>('main');
 
   useEffect(() => {
-    quickFoods(12).then(setQuick);
-  }, []);
+    quickFoods(12, meal).then(setQuick);
+  }, [meal]);
 
-  async function handleFile(file: File | undefined) {
-    if (!file) return;
+  function pick(ref: typeof cameraRef, target: 'main' | 'refine') {
+    pickTarget.current = target;
+    ref.current?.click();
+  }
+
+  async function handleFiles(list: FileList | null) {
+    if (!list?.length) return;
     setError('');
     try {
-      const encoded = await fileToEncodedImage(file);
-      setImage(encoded);
-      setPreview(`data:image/jpeg;base64,${encoded.data}`);
-      setStep('photo-confirm');
+      const encoded = await Promise.all([...list].map(fileToEncodedImage));
+      if (pickTarget.current === 'refine') {
+        setRefineImages((prev) => [...prev, ...encoded]);
+      } else {
+        setImages((prev) => [...prev, ...encoded]);
+        setStep('photo-confirm');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not read that image.');
     }
   }
 
-  async function runAnalysis(input: { images?: EncodedImage[]; text?: string }) {
+  async function runAnalysis(input: {
+    images?: EncodedImage[];
+    text?: string;
+    revision?: { previous: EditableFood[]; feedback: string };
+  }) {
     setStep('analyzing');
     setError('');
     try {
@@ -74,16 +89,28 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
       });
       if (analysis.items.length === 0) {
         setError(analysis.notes || 'No food was recognized. Try again or enter it manually.');
-        setStep('choose');
+        setStep(input.revision ? 'review' : 'choose');
         return;
       }
       setItems(analysis.items);
       setNotes(analysis.notes);
+      if (input.revision) {
+        setRefineText('');
+        setRefineImages([]);
+      }
       setStep('review');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Analysis failed.');
-      setStep('choose');
+      setStep(input.revision ? 'review' : 'choose');
     }
+  }
+
+  function submitRefine() {
+    runAnalysis({
+      images: [...images, ...refineImages],
+      text: hint || description,
+      revision: { previous: items, feedback: refineText },
+    });
   }
 
   async function saveItems(toSave: EditableFood[]) {
@@ -154,14 +181,21 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
         accept="image/*"
         capture="environment"
         hidden
-        onChange={(e) => handleFile(e.target.files?.[0])}
+        onChange={(e) => {
+          handleFiles(e.target.files);
+          e.target.value = '';
+        }}
       />
       <input
         ref={libraryRef}
         type="file"
         accept="image/*"
+        multiple
         hidden
-        onChange={(e) => handleFile(e.target.files?.[0])}
+        onChange={(e) => {
+          handleFiles(e.target.files);
+          e.target.value = '';
+        }}
       />
 
       {step === 'choose' && (
@@ -171,18 +205,18 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
           {error && <div className="error-box">{error}</div>}
           {savedFlash && <div className="notes-box">{savedFlash}</div>}
           <div className="add-options">
-            <button className="add-option" onClick={() => cameraRef.current?.click()}>
+            <button className="add-option" onClick={() => pick(cameraRef, 'main')}>
               <span className="ao-icon">📸</span>
               <span>
                 <div className="ao-title">Take a photo</div>
                 <div className="ao-sub">AI estimates the macros from your camera</div>
               </span>
             </button>
-            <button className="add-option" onClick={() => libraryRef.current?.click()}>
+            <button className="add-option" onClick={() => pick(libraryRef, 'main')}>
               <span className="ao-icon">🖼️</span>
               <span>
-                <div className="ao-title">Photo or screenshot</div>
-                <div className="ao-sub">A saved photo, nutrition label, or macro screenshot</div>
+                <div className="ao-title">Photos or screenshots</div>
+                <div className="ao-sub">Pick one or more: photos, labels, macro screenshots</div>
               </span>
             </button>
             <button className="add-option" onClick={() => setStep('describe')}>
@@ -228,13 +262,16 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
       {step === 'photo-confirm' && (
         <>
           <h2>Ready to analyze</h2>
-          {preview && (
-            <img
-              src={preview}
-              alt="Selected food"
-              style={{ width: '100%', borderRadius: 16, maxHeight: 280, objectFit: 'cover', marginBottom: 12 }}
-            />
-          )}
+          {error && <div className="error-box">{error}</div>}
+          <ImageStrip images={images} onRemove={(i) => setImages(images.filter((_, idx) => idx !== i))} />
+          <div className="btn-row" style={{ marginBottom: 12 }}>
+            <button className="btn btn-secondary" onClick={() => pick(cameraRef, 'main')}>
+              📸 Add photo
+            </button>
+            <button className="btn btn-secondary" onClick={() => pick(libraryRef, 'main')}>
+              🖼️ Add screenshot
+            </button>
+          </div>
           <div className="field">
             <span>Optional details — portions, brands, what's hidden</span>
             <input
@@ -249,9 +286,10 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
             </button>
             <button
               className="btn btn-primary"
-              onClick={() => runAnalysis({ images: image ? [image] : [], text: hint })}
+              disabled={images.length === 0}
+              onClick={() => runAnalysis({ images, text: hint })}
             >
-              Analyze ✨
+              Analyze {images.length > 1 ? `${images.length} images ` : ''}✨
             </button>
           </div>
         </>
@@ -319,6 +357,36 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
               )}
             </div>
           ))}
+          <div className="section-title">Not quite right? Refine with AI</div>
+          <div className="review-item">
+            <div className="field" style={{ marginBottom: 10 }}>
+              <input
+                value={refineText}
+                placeholder={'e.g. "it was a double patty" or "I only ate half"'}
+                onChange={(e) => setRefineText(e.target.value)}
+              />
+            </div>
+            <ImageStrip
+              images={refineImages}
+              onRemove={(i) => setRefineImages(refineImages.filter((_, idx) => idx !== i))}
+            />
+            <div className="btn-row" style={{ marginTop: 0 }}>
+              <button className="btn btn-secondary" style={{ padding: 10, fontSize: 14 }} onClick={() => pick(cameraRef, 'refine')}>
+                📸 Photo
+              </button>
+              <button className="btn btn-secondary" style={{ padding: 10, fontSize: 14 }} onClick={() => pick(libraryRef, 'refine')}>
+                🖼️ Screenshot
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ padding: 10, fontSize: 14 }}
+                disabled={!refineText.trim() && refineImages.length === 0}
+                onClick={submitRefine}
+              >
+                Refine ✨
+              </button>
+            </div>
+          </div>
           <button className="btn btn-primary" onClick={() => saveItems(items)}>
             Add to {MEAL_LABELS[meal]}
           </button>
@@ -334,6 +402,41 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
         </>
       )}
     </Sheet>
+  );
+}
+
+function ImageStrip({ images, onRemove }: { images: EncodedImage[]; onRemove: (index: number) => void }) {
+  if (images.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+      {images.map((img, i) => (
+        <div key={i} style={{ position: 'relative' }}>
+          <img
+            src={`data:image/jpeg;base64,${img.data}`}
+            alt={`Selected ${i + 1}`}
+            style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 12 }}
+          />
+          <button
+            aria-label={`Remove image ${i + 1}`}
+            onClick={() => onRemove(i)}
+            style={{
+              position: 'absolute',
+              top: -6,
+              right: -6,
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              background: 'var(--danger)',
+              color: 'white',
+              fontSize: 13,
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
   );
 }
 
