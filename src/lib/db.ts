@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import { EMPTY_MACROS, MACRO_KEYS, type Entry, type MacroSet, type Settings } from '../types';
+import { EMPTY_MACROS, MACRO_KEYS, type Entry, type MacroSet, type Meal, type Settings } from '../types';
 import { loadSettings, saveSettings } from './settings';
 
 class MacroMateDB extends Dexie {
@@ -60,22 +60,26 @@ export interface QuickFood extends MacroSet {
   portion: string;
   count: number;
   lastUsed: number;
+  mealCount: number;
 }
 
 /**
- * Foods to offer for one-tap re-logging: deduped by name, ranked by how often
- * they were logged, ties broken by recency. The most recent entry for a name
- * supplies its macros.
+ * Foods to offer for one-tap re-logging: deduped by name. When a meal is
+ * given, foods previously logged at that meal rank first (by how often they
+ * were eaten at it), then by overall frequency, then recency. The most
+ * recent entry for a name supplies its macros.
  */
-export async function quickFoods(limit = 20): Promise<QuickFood[]> {
+export async function quickFoods(limit = 20, meal?: Meal): Promise<QuickFood[]> {
   const entries = await db.entries.orderBy('createdAt').reverse().limit(500).toArray();
   const byName = new Map<string, QuickFood>();
   for (const e of entries) {
     const key = e.name.trim().toLowerCase();
     if (!key) continue;
+    const atMeal = meal && e.meal === meal ? 1 : 0;
     const existing = byName.get(key);
     if (existing) {
       existing.count += 1;
+      existing.mealCount += atMeal;
       existing.lastUsed = Math.max(existing.lastUsed, e.createdAt);
     } else {
       const food: QuickFood = {
@@ -83,6 +87,7 @@ export async function quickFoods(limit = 20): Promise<QuickFood[]> {
         emoji: e.emoji,
         portion: e.portion,
         count: 1,
+        mealCount: atMeal,
         lastUsed: e.createdAt,
         ...EMPTY_MACROS,
       };
@@ -91,7 +96,7 @@ export async function quickFoods(limit = 20): Promise<QuickFood[]> {
     }
   }
   return [...byName.values()]
-    .sort((a, b) => b.count - a.count || b.lastUsed - a.lastUsed)
+    .sort((a, b) => b.mealCount - a.mealCount || b.count - a.count || b.lastUsed - a.lastUsed)
     .slice(0, limit);
 }
 

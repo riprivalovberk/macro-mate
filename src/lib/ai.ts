@@ -17,6 +17,7 @@ Rules:
 - "portion" is a short human-readable size like "1 bowl (~350 g)" or "2 slices".
 - confidence: "high" when reading a label or the food is unambiguous, "medium" for typical photo estimates, "low" when the portion or preparation is largely a guess.
 - Use "notes" for one short sentence of caveats worth knowing (hidden oils, dressing assumptions, ambiguous serving count). Empty string if nothing useful.
+- When asked to revise a previous estimate, apply the user's feedback and any newly provided images, and return the COMPLETE corrected item list (including items that didn't change).
 - If the image contains no food or readable nutrition info, return an empty items array and explain in notes.`;
 
 const ANALYSIS_SCHEMA = {
@@ -68,6 +69,8 @@ export interface AnalyzeInput {
   images?: { data: string; mediaType: 'image/jpeg' | 'image/png' }[];
   /** Free-text description and/or portion hints. */
   text?: string;
+  /** Refine a previous estimate using user feedback and/or extra images. */
+  revision?: { previous: Omit<FoodItem, 'confidence'>[]; feedback: string };
 }
 
 /** Clamp and round a nutrient value coming back from the model. */
@@ -117,7 +120,7 @@ export async function analyzeFood(input: AnalyzeInput): Promise<Analysis> {
   if (!input.apiKey) {
     throw new Error('Add your Anthropic API key in Settings first.');
   }
-  if (!input.images?.length && !input.text?.trim()) {
+  if (!input.images?.length && !input.text?.trim() && !input.revision) {
     throw new Error('Provide a photo or a description.');
   }
 
@@ -132,12 +135,20 @@ export async function analyzeFood(input: AnalyzeInput): Promise<Analysis> {
       source: { type: 'base64', media_type: img.mediaType, data: img.data },
     });
   }
-  content.push({
-    type: 'text',
-    text: input.text?.trim()
-      ? `Analyze this food. User notes / measurements: ${input.text.trim()}`
-      : 'Analyze this food.',
-  });
+  const parts: string[] = [];
+  if (input.revision) {
+    parts.push(`You previously estimated these items: ${JSON.stringify(input.revision.previous)}`);
+    parts.push(
+      input.revision.feedback.trim()
+        ? `Revise the estimate based on this user feedback: ${input.revision.feedback.trim()}`
+        : 'Revise the estimate based on the additional image(s) provided.',
+    );
+  }
+  if (input.text?.trim()) {
+    parts.push(`User notes / measurements: ${input.text.trim()}`);
+  }
+  if (parts.length === 0) parts.push('Analyze this food.');
+  content.push({ type: 'text', text: parts.join('\n') });
 
   let response: Anthropic.Message;
   try {
