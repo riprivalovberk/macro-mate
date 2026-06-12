@@ -113,6 +113,40 @@ export function SettingsPage() {
         )}
         <div className="settings-row">
           <div>
+            <div className="sr-label">Track alcohol</div>
+            <div className="sr-sub">Adds a 🍸 row; drinking over your limit lowers the score</div>
+          </div>
+          <button
+            role="switch"
+            aria-checked={settings.trackAlcohol}
+            style={{ color: 'var(--accent)', fontWeight: 600 }}
+            onClick={() => updateSettings({ trackAlcohol: !settings.trackAlcohol })}
+          >
+            {settings.trackAlcohol ? 'On' : 'Off'}
+          </button>
+        </div>
+        {settings.trackAlcohol && (
+          <div className="settings-row">
+            <div>
+              <div className="sr-label">Daily drink limit</div>
+              <div className="sr-sub">Standard drinks (12 oz beer, 5 oz wine, 1.5 oz spirits)</div>
+            </div>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={20}
+              style={{ width: 76, textAlign: 'center' }}
+              value={settings.alcoholLimit}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isFinite(n) && n >= 0) updateSettings({ alcoholLimit: Math.round(n) });
+              }}
+            />
+          </div>
+        )}
+        <div className="settings-row">
+          <div>
             <div className="sr-label">Recalculate from profile</div>
             <div className="sr-sub">Age, weight, activity, goal</div>
           </div>

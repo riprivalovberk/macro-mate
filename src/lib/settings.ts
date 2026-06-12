@@ -13,6 +13,8 @@ export const DEFAULT_SETTINGS: Settings = {
   goals: { ...DEFAULT_GOALS },
   trackWater: false,
   waterGoal: 8,
+  trackAlcohol: false,
+  alcoholLimit: 2,
 };
 
 let cached: Settings | null = null;

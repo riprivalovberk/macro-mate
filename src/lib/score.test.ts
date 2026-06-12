@@ -43,6 +43,45 @@ describe('nutritionScore', () => {
   });
 });
 
+describe('water & alcohol extras', () => {
+  it('still gives 100 when hydrated and alcohol-free', () => {
+    const { score, reasons } = nutritionScore(perfect, goals, {
+      water: { cups: 8, goal: 8 },
+      alcohol: { drinks: 0, limit: 2 },
+    });
+    expect(score).toBe(100);
+    expect(reasons.find((r) => r.label === 'Hydrated')?.ok).toBe(true);
+    expect(reasons.find((r) => r.label === 'No alcohol')?.ok).toBe(true);
+  });
+
+  it('lowers the score when not drinking enough water', () => {
+    const { score, reasons } = nutritionScore(perfect, goals, { water: { cups: 2, goal: 8 } });
+    expect(score).toBeLessThan(100);
+    expect(reasons.find((r) => r.label === 'Drink more water')?.ok).toBe(false);
+  });
+
+  it('gives full credit within the drink limit and penalizes going over', () => {
+    const within = nutritionScore(perfect, goals, { alcohol: { drinks: 2, limit: 2 } });
+    expect(within.score).toBe(100);
+    expect(within.reasons.find((r) => r.label === 'Alcohol within limit')?.ok).toBe(true);
+
+    const over = nutritionScore(perfect, goals, { alcohol: { drinks: 5, limit: 2 } });
+    expect(over.score).toBeLessThan(within.score);
+    expect(over.reasons.find((r) => r.label === 'Too much alcohol')?.ok).toBe(false);
+  });
+
+  it('handles a zero drink limit without dividing by zero', () => {
+    const { score } = nutritionScore(perfect, goals, { alcohol: { drinks: 1, limit: 0 } });
+    expect(Number.isFinite(score)).toBe(true);
+    expect(score).toBeLessThan(100);
+  });
+
+  it('keeps the old behaviour when nothing extra is tracked', () => {
+    expect(nutritionScore(perfect, goals).score).toBe(100);
+    expect(nutritionScore(perfect, goals).reasons.some((r) => /water|alcohol/i.test(r.label))).toBe(false);
+  });
+});
+
 describe('macroShares', () => {
   it('computes percent of calories using 4/4/9', () => {
     // 100g P = 400, 100g C = 400, 22.22g F ≈ 200 → 40/40/20

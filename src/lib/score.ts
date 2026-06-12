@@ -12,15 +12,26 @@ export interface NutritionScore {
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
+/** Optional components, included only when the user tracks them. */
+export interface ScoreExtras {
+  /** Water: cups drunk vs daily goal. */
+  water?: { cups: number; goal: number };
+  /** Alcohol: standard drinks vs daily limit. */
+  alcohol?: { drinks: number; limit: number };
+}
+
 /**
  * Daily nutrition score out of 100, weighted:
  * calories 30 (closeness to goal), protein 25 (hit target), fiber 15,
  * carbs 10 + fat 10 (closeness), sugar 5 + sodium 5 (stay under limit).
  * Components with a 0 goal are skipped (full credit, no reason shown).
+ * When water/alcohol are tracked each adds a 10-point component and the
+ * total is normalized back to 0–100.
  */
-export function nutritionScore(t: MacroSet, g: Goals): NutritionScore {
+export function nutritionScore(t: MacroSet, g: Goals, extras: ScoreExtras = {}): NutritionScore {
   const reasons: ScoreReason[] = [];
   let score = 0;
+  let possible = 100;
 
   // Calories — closeness to goal, full credit within ±10%
   if (g.kcal > 0) {
@@ -73,7 +84,28 @@ export function nutritionScore(t: MacroSet, g: Goals): NutritionScore {
     } else score += 5;
   }
 
-  return { score: Math.round(score), reasons };
+  // Water — at least the daily goal (only when tracked)
+  if (extras.water && extras.water.goal > 0) {
+    possible += 10;
+    const r = clamp01(extras.water.cups / extras.water.goal);
+    score += 10 * r;
+    reasons.push(r >= 1 ? { label: 'Hydrated', ok: true } : { label: 'Drink more water', ok: false });
+  }
+
+  // Alcohol — a limit, like sugar/sodium (only when tracked)
+  if (extras.alcohol) {
+    const { drinks, limit } = extras.alcohol;
+    possible += 10;
+    if (drinks <= limit) {
+      score += 10;
+      reasons.push({ label: drinks === 0 ? 'No alcohol' : 'Alcohol within limit', ok: true });
+    } else {
+      score += 10 * clamp01(1 - (drinks - limit) / Math.max(limit, 1));
+      reasons.push({ label: 'Too much alcohol', ok: false });
+    }
+  }
+
+  return { score: Math.round((score / possible) * 100), reasons };
 }
 
 /** Percent of consumed calories from protein / carbs / fat (4/4/9 kcal per g). Sums to ~100. */

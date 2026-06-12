@@ -170,7 +170,7 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
   }
 
   const mealPicker = (
-    <div className="seg" style={{ marginBottom: 14 }}>
+    <div className="seg seg-meals" style={{ marginBottom: 14 }}>
       {MEALS.map((m) => (
         <button key={m} className={m === meal ? 'active' : ''} onClick={() => setMeal(m)}>
           {MEAL_LABELS[m]}

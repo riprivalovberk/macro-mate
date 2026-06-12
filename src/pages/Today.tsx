@@ -5,7 +5,7 @@ import { ItemFields, type EditableFood } from '../components/ItemFields';
 import { MacroBar } from '../components/MacroBar';
 import { Ring } from '../components/Ring';
 import { Sheet } from '../components/Sheet';
-import { addWater, deleteEntry, entriesForDate, totals, updateEntry, waterForDate } from '../lib/db';
+import { addDrinks, addWater, alcoholForDate, deleteEntry, entriesForDate, totals, updateEntry, waterForDate } from '../lib/db';
 import { addDays, friendlyDate, todayKey } from '../lib/dates';
 import { macroShares, nutritionScore } from '../lib/score';
 import { useSettings } from '../lib/settings';
@@ -42,6 +42,7 @@ export function Today({ date, onDateChange }: TodayProps) {
   const settings = useSettings();
   const entries = useLiveQuery(() => entriesForDate(date), [date]) ?? [];
   const waterCups = useLiveQuery(() => waterForDate(date), [date])?.cups ?? 0;
+  const drinks = useLiveQuery(() => alcoholForDate(date), [date])?.drinks ?? 0;
   const [adding, setAdding] = useState<Meal | null>(null);
   const [editing, setEditing] = useState<Entry | null>(null);
   const [metric, setMetric] = useState<keyof MacroSet>(() => {
@@ -61,7 +62,10 @@ export function Today({ date, onDateChange }: TodayProps) {
   const meta = METRIC_META[metric];
   const shares = macroShares(t);
   const goalShares = macroShares(g);
-  const dayScore = nutritionScore(t, g);
+  const dayScore = nutritionScore(t, g, {
+    water: settings.trackWater ? { cups: waterCups, goal: settings.waterGoal } : undefined,
+    alcohol: settings.trackAlcohol ? { drinks, limit: settings.alcoholLimit } : undefined,
+  });
   const byMeal = new Map<Meal, Entry[]>(MEALS.map((m) => [m, []]));
   for (const e of entries) byMeal.get(e.meal)?.push(e);
 
@@ -136,39 +140,26 @@ export function Today({ date, onDateChange }: TodayProps) {
           </div>
         </div>
         {settings.trackWater && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              marginTop: 12,
-              background: 'var(--bg-sunken)',
-              borderRadius: 12,
-              padding: '8px 12px',
-            }}
-          >
-            <span style={{ fontSize: 16 }}>💧</span>
-            <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>
-              Water{' '}
-              <span style={{ color: waterCups >= settings.waterGoal ? 'var(--fat)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                {waterCups} / {settings.waterGoal} cups
-              </span>
-            </span>
-            <button
-              aria-label="Remove a cup of water"
-              onClick={() => addWater(date, -1)}
-              style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--bg-elev)', boxShadow: 'var(--shadow)', fontSize: 17, color: 'var(--accent)' }}
-            >
-              −
-            </button>
-            <button
-              aria-label="Add a cup of water"
-              onClick={() => addWater(date, 1)}
-              style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--bg-elev)', boxShadow: 'var(--shadow)', fontSize: 17, color: 'var(--accent)' }}
-            >
-              ＋
-            </button>
-          </div>
+          <CounterRow
+            emoji="💧"
+            name="Water"
+            unit="cups"
+            value={waterCups}
+            target={settings.waterGoal}
+            valueColor={waterCups >= settings.waterGoal ? 'var(--fat)' : 'var(--text-dim)'}
+            onAdd={(d) => addWater(date, d)}
+          />
+        )}
+        {settings.trackAlcohol && (
+          <CounterRow
+            emoji="🍸"
+            name="Alcohol"
+            unit="drinks"
+            value={drinks}
+            target={settings.alcoholLimit}
+            valueColor={drinks > settings.alcoholLimit ? 'var(--danger)' : 'var(--text-dim)'}
+            onAdd={(d) => addDrinks(date, d)}
+          />
         )}
       </div>
 
@@ -254,6 +245,62 @@ export function Today({ date, onDateChange }: TodayProps) {
   );
 }
 
+/** Slim −/+ tally row for water cups and alcohol drinks. */
+function CounterRow({
+  emoji,
+  name,
+  unit,
+  value,
+  target,
+  valueColor,
+  onAdd,
+}: {
+  emoji: string;
+  name: string;
+  unit: string;
+  value: number;
+  target: number;
+  valueColor: string;
+  onAdd: (delta: number) => void;
+}) {
+  const btnStyle = {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    background: 'var(--bg-elev)',
+    boxShadow: 'var(--shadow)',
+    fontSize: 17,
+    color: 'var(--accent)',
+  } as const;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginTop: 12,
+        background: 'var(--bg-sunken)',
+        borderRadius: 12,
+        padding: '8px 12px',
+      }}
+    >
+      <span style={{ fontSize: 16 }}>{emoji}</span>
+      <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>
+        {name}{' '}
+        <span style={{ color: valueColor, fontVariantNumeric: 'tabular-nums' }}>
+          {value} / {target} {unit}
+        </span>
+      </span>
+      <button aria-label={`Remove ${unit.replace(/s$/, '')} of ${name.toLowerCase()}`} onClick={() => onAdd(-1)} style={btnStyle}>
+        −
+      </button>
+      <button aria-label={`Add ${unit.replace(/s$/, '')} of ${name.toLowerCase()}`} onClick={() => onAdd(1)} style={btnStyle}>
+        ＋
+      </button>
+    </div>
+  );
+}
+
 function EditEntrySheet({ entry, onClose }: { entry: Entry; onClose: () => void }) {
   const [item, setItem] = useState<EditableFood>({
     name: entry.name,
@@ -283,7 +330,7 @@ function EditEntrySheet({ entry, onClose }: { entry: Entry; onClose: () => void 
   return (
     <Sheet onClose={onClose}>
       <h2>Edit food</h2>
-      <div className="seg" style={{ marginBottom: 14 }}>
+      <div className="seg seg-meals" style={{ marginBottom: 14 }}>
         {MEALS.map((m) => (
           <button key={m} className={m === meal ? 'active' : ''} onClick={() => setMeal(m)}>
             {MEAL_LABELS[m]}

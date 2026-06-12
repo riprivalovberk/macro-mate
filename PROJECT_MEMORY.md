@@ -41,3 +41,15 @@ Accumulated facts, decisions, constraints, and next steps. Newest entries at the
 
 ### Next steps
 - Backlog: weekly score trend, streaks, "finish the day" AI suggestions; possibly extend grounding to photo flow when a brand is visible.
+
+## Project Memory Update — 2026-06-12 (session 5: liquids + score water/alcohol)
+
+### New facts
+- v1.5: fifth meal category **Liquids** (`Meal` union + `MEALS`/`MEAL_LABELS`) for drinks logged through the day; appears as its own card on Today and in both meal pickers (`.seg.seg-meals` shrinks the 5-button picker font to 11.5px so it fits on iPhone).
+- Alcohol tracking: opt-in (Settings → Goals → "Track alcohol", default off), 🍸 −/+ standard-drinks row in dashboard (mirrors water; shared `CounterRow` component in `Today.tsx`), editable daily limit (default 2 standard drinks), Dexie schema v3 `alcohol` table keyed by date, included in backups.
+- Nutrition score now takes optional extras (`ScoreExtras` in `src/lib/score.ts`): when water tracking is on, hydration is a 10-pt component ("Hydrated" / "Drink more water"); when alcohol tracking is on, the limit is a 10-pt component like sugar/sodium ("No alcohol" / "Alcohol within limit" / "Too much alcohol", credit fades to 0 at limit + max(limit,1) drinks). Total is normalized back to 0–100. Untracked → behaviour unchanged.
+- Test count: 83.
+
+### Decisions
+- Alcohol is a simple drinks tally like water (not per-entry alcohol grams); caloric drinks (beer, wine, cocktails) can additionally be logged as food entries under Liquids for their kcal/carbs.
+- Score extras use earned/possible normalization rather than reshuffling the base 100-point weights.
