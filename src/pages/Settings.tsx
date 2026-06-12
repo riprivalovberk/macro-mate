@@ -80,7 +80,7 @@ export function SettingsPage() {
         <div className="settings-row">
           <div>
             <div className="sr-label">Track water</div>
-            <div className="sr-sub">Adds a slim 💧 row to the dashboard</div>
+            <div className="sr-sub">Adds a 💧 row; logged Liquids count toward the goal</div>
           </div>
           <button
             role="switch"

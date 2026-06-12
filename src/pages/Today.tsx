@@ -7,6 +7,7 @@ import { Ring } from '../components/Ring';
 import { Sheet } from '../components/Sheet';
 import { addDrinks, addWater, alcoholForDate, deleteEntry, entriesForDate, totals, updateEntry, waterForDate } from '../lib/db';
 import { addDays, friendlyDate, todayKey } from '../lib/dates';
+import { liquidCups } from '../lib/liquids';
 import { macroShares, nutritionScore } from '../lib/score';
 import { useSettings } from '../lib/settings';
 import { MEAL_LABELS, MEALS, type Entry, type MacroSet, type Meal } from '../types';
@@ -62,8 +63,12 @@ export function Today({ date, onDateChange }: TodayProps) {
   const meta = METRIC_META[metric];
   const shares = macroShares(t);
   const goalShares = macroShares(g);
+  // Logged Liquids count toward the water goal; the − button only removes
+  // manually added cups, so logged drinks must be deleted as entries.
+  const entryCups = liquidCups(entries.filter((e) => e.meal === 'liquids'));
+  const totalCups = Math.round((waterCups + entryCups) * 10) / 10;
   const dayScore = nutritionScore(t, g, {
-    water: settings.trackWater ? { cups: waterCups, goal: settings.waterGoal } : undefined,
+    water: settings.trackWater ? { cups: totalCups, goal: settings.waterGoal } : undefined,
     alcohol: settings.trackAlcohol ? { drinks, limit: settings.alcoholLimit } : undefined,
   });
   const byMeal = new Map<Meal, Entry[]>(MEALS.map((m) => [m, []]));
@@ -144,9 +149,11 @@ export function Today({ date, onDateChange }: TodayProps) {
             emoji="💧"
             name="Water"
             unit="cups"
-            value={waterCups}
+            value={totalCups}
             target={settings.waterGoal}
-            valueColor={waterCups >= settings.waterGoal ? 'var(--fat)' : 'var(--text-dim)'}
+            valueColor={totalCups >= settings.waterGoal ? 'var(--fat)' : 'var(--text-dim)'}
+            note={entryCups > 0 ? `${entryCups} from Liquids` : undefined}
+            minusDisabled={waterCups <= 0}
             onAdd={(d) => addWater(date, d)}
           />
         )}
@@ -158,6 +165,7 @@ export function Today({ date, onDateChange }: TodayProps) {
             value={drinks}
             target={settings.alcoholLimit}
             valueColor={drinks > settings.alcoholLimit ? 'var(--danger)' : 'var(--text-dim)'}
+            minusDisabled={drinks <= 0}
             onAdd={(d) => addDrinks(date, d)}
           />
         )}
@@ -253,6 +261,8 @@ function CounterRow({
   value,
   target,
   valueColor,
+  note,
+  minusDisabled,
   onAdd,
 }: {
   emoji: string;
@@ -261,6 +271,8 @@ function CounterRow({
   value: number;
   target: number;
   valueColor: string;
+  note?: string;
+  minusDisabled?: boolean;
   onAdd: (delta: number) => void;
 }) {
   const btnStyle = {
@@ -290,8 +302,14 @@ function CounterRow({
         <span style={{ color: valueColor, fontVariantNumeric: 'tabular-nums' }}>
           {value} / {target} {unit}
         </span>
+        {note && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}> · {note}</span>}
       </span>
-      <button aria-label={`Remove ${unit.replace(/s$/, '')} of ${name.toLowerCase()}`} onClick={() => onAdd(-1)} style={btnStyle}>
+      <button
+        aria-label={`Remove ${unit.replace(/s$/, '')} of ${name.toLowerCase()}`}
+        disabled={minusDisabled}
+        onClick={() => onAdd(-1)}
+        style={{ ...btnStyle, opacity: minusDisabled ? 0.35 : 1 }}
+      >
         −
       </button>
       <button aria-label={`Add ${unit.replace(/s$/, '')} of ${name.toLowerCase()}`} onClick={() => onAdd(1)} style={btnStyle}>

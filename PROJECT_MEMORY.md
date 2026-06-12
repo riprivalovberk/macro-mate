@@ -53,3 +53,11 @@ Accumulated facts, decisions, constraints, and next steps. Newest entries at the
 ### Decisions
 - Alcohol is a simple drinks tally like water (not per-entry alcohol grams); caloric drinks (beer, wine, cocktails) can additionally be logged as food entries under Liquids for their kcal/carbs.
 - Score extras use earned/possible normalization rather than reshuffling the base 100-point weights.
+
+## Project Memory Update — 2026-06-12 (session 5b: Liquids count toward water)
+
+### New facts
+- Logged Liquids entries now count toward the water goal: `src/lib/liquids.ts` parses cups from each entry's portion text (oz / fl oz, ml, L, cups, glasses; anything unrecognizable = 1 cup). Water row shows manual cups + liquid cups ("· N from Liquids" note); the − button is disabled at 0 manual cups, so logged drinks can only be removed by deleting the entry. Score's water component uses the combined total. Test count: 90.
+
+### Decisions
+- All Liquids entries count toward hydration (no alcohol detection on entries); alcohol remains a manual 🍸 tally only.
