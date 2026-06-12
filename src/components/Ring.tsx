@@ -3,10 +3,13 @@ interface RingProps {
   goal: number;
   size?: number;
   label?: string;
+  color?: string;
+  /** When true (calories, sugar, sodium), exceeding the goal renders red. */
+  overIsBad?: boolean;
 }
 
-/** Calorie progress ring. Turns red when over goal. */
-export function Ring({ value, goal, size = 140, label = 'kcal' }: RingProps) {
+/** Progress ring for any nutrient. Turns red when over a "bad to exceed" goal. */
+export function Ring({ value, goal, size = 140, label = 'kcal', color = 'var(--kcal)', overIsBad = true }: RingProps) {
   const stroke = 11;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -30,7 +33,7 @@ export function Ring({ value, goal, size = 140, label = 'kcal' }: RingProps) {
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={over ? 'var(--danger)' : 'var(--kcal)'}
+          stroke={over && overIsBad ? 'var(--danger)' : color}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
@@ -53,7 +56,7 @@ export function Ring({ value, goal, size = 140, label = 'kcal' }: RingProps) {
           {Math.round(value)}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>/ {goal} {label}</div>
-        <div style={{ fontSize: 11, color: over ? 'var(--danger)' : 'var(--text-dim)', marginTop: 2 }}>
+        <div style={{ fontSize: 11, color: over && overIsBad ? 'var(--danger)' : 'var(--text-dim)', marginTop: 2 }}>
           {over ? `${-remaining} over` : `${remaining} left`}
         </div>
       </div>
