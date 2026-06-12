@@ -27,3 +27,17 @@ Accumulated facts, decisions, constraints, and next steps. Newest entries at the
 - Weekly nutrition-score trend in History tab; streaks (consecutive days hitting protein/calories).
 - "Finish the day" AI suggestions (e.g. 40g protein short → options from frequent foods).
 - User's email: richardcprivalov@gmail.com (session context).
+
+## Project Memory Update — 2026-06-12 (session 4: grounding + water)
+
+### New facts
+- v1.4: text-described foods are grounded via OpenFoodFacts (`src/lib/foodlookup.ts`) — free CORS API, per-serving preferred over per-100g, sodium g→mg; best-effort with 4s timeout, never blocks analysis. Injected as "Verified nutrition data" prompt block (`groundingData` on AnalyzeInput).
+- System prompt now forbids inventing ungrounded nutrient values (use 0 + note) — fixes the Izze phantom-sodium bug.
+- Water tracking: opt-in (Settings → Goals → "Track water", default off), slim 💧 −/+ row in the dashboard card, cups (8 oz), goal editable (default 8), Dexie schema v2 `water` table keyed by date, included in backups. Test count: 76.
+
+### Decisions
+- Chose OpenFoodFacts over Claude web-search tool (free/fast vs per-lookup cost; web search also conflicts with structured outputs) — user confirmed via Q&A.
+- Lookup only runs for the "Describe it" flow, not photo or refine flows.
+
+### Next steps
+- Backlog: weekly score trend, streaks, "finish the day" AI suggestions; possibly extend grounding to photo flow when a brand is visible.

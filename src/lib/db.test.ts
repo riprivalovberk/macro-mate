@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   addEntry,
+  addWater,
   db,
   deleteEntry,
   entriesForDate,
@@ -10,6 +11,7 @@ import {
   totals,
   totalsByDate,
   updateEntry,
+  waterForDate,
 } from './db';
 import { resetSettingsCacheForTests } from './settings';
 import type { Entry } from '../types';
@@ -35,12 +37,38 @@ function makeEntry(overrides: Partial<Entry> = {}): Omit<Entry, 'id'> {
 
 beforeEach(async () => {
   await db.entries.clear();
+  await db.water.clear();
   localStorage.clear();
   resetSettingsCacheForTests();
 });
 
 afterEach(async () => {
   await db.entries.clear();
+  await db.water.clear();
+});
+
+describe('water tracking', () => {
+  it('adds and removes cups per day, clamped at 0', async () => {
+    expect(await addWater('2026-06-12', 1)).toBe(1);
+    expect(await addWater('2026-06-12', 1)).toBe(2);
+    expect(await addWater('2026-06-12', -5)).toBe(0);
+    expect((await waterForDate('2026-06-12'))?.cups).toBe(0);
+  });
+
+  it('keeps days independent', async () => {
+    await addWater('2026-06-11', 3);
+    await addWater('2026-06-12', 1);
+    expect((await waterForDate('2026-06-11'))?.cups).toBe(3);
+    expect((await waterForDate('2026-06-12'))?.cups).toBe(1);
+  });
+
+  it('round-trips water through backup export/import', async () => {
+    await addWater('2026-06-12', 5);
+    const json = await exportBackup();
+    await db.water.clear();
+    await importBackup(json);
+    expect((await waterForDate('2026-06-12'))?.cups).toBe(5);
+  });
 });
 
 describe('entry CRUD', () => {

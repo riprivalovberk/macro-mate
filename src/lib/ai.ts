@@ -10,6 +10,8 @@ Input types you must handle:
 - A text description (possibly alongside a photo) with portion details like "200g" or "two slices": treat any user-provided measurements as authoritative and scale your estimate to them.
 
 Rules:
+- NEVER state a nutrient value you cannot ground in the image, a label, the user's text, or provided database data. If a nutrient is unknown but typically near zero for that food (e.g. sodium in a fruit soda, fat in black coffee), report 0 and mention the assumption in notes — do NOT fill in plausible-sounding nonzero values.
+- When "Verified nutrition data" from a food database is provided and an entry matches the user's food, prefer those label values over your own estimate, scaled to the portion eaten.
 - Report nutrition for the portion actually shown/described, not per 100g.
 - kcal in calories; protein, carbs, fat, fiber, sugar in grams; sodium in milligrams.
 - Split a plate into at most a handful of meaningful items (e.g. "Grilled chicken breast", "White rice", "Side salad"); don't itemize garnishes.
@@ -71,6 +73,8 @@ export interface AnalyzeInput {
   text?: string;
   /** Refine a previous estimate using user feedback and/or extra images. */
   revision?: { previous: Omit<FoodItem, 'confidence'>[]; feedback: string };
+  /** Pre-fetched verified nutrition data (e.g. OpenFoodFacts) to ground the estimate. */
+  groundingData?: string;
 }
 
 /** Clamp and round a nutrient value coming back from the model. */
@@ -146,6 +150,9 @@ export async function analyzeFood(input: AnalyzeInput): Promise<Analysis> {
   }
   if (input.text?.trim()) {
     parts.push(`User notes / measurements: ${input.text.trim()}`);
+  }
+  if (input.groundingData?.trim()) {
+    parts.push(input.groundingData.trim());
   }
   if (parts.length === 0) parts.push('Analyze this food.');
   content.push({ type: 'text', text: parts.join('\n') });

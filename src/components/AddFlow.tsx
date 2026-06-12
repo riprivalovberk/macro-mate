@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { analyzeFood } from '../lib/ai';
+import { lookupFoodData } from '../lib/foodlookup';
 import { addEntry, quickFoods, type QuickFood } from '../lib/db';
 import { fileToEncodedImage, type EncodedImage } from '../lib/image';
 import { useSettings } from '../lib/settings';
@@ -78,14 +79,20 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
     images?: EncodedImage[];
     text?: string;
     revision?: { previous: EditableFood[]; feedback: string };
+    /** When set, look up verified label data for this query to ground the estimate. */
+    lookupQuery?: string;
   }) {
     setStep('analyzing');
     setError('');
     try {
+      const groundingData = input.lookupQuery ? await lookupFoodData(input.lookupQuery) : undefined;
       const analysis: Analysis = await analyzeFood({
         apiKey: settings.apiKey,
         model: settings.model,
-        ...input,
+        images: input.images,
+        text: input.text,
+        revision: input.revision,
+        groundingData,
       });
       if (analysis.items.length === 0) {
         setError(analysis.notes || 'No food was recognized. Try again or enter it manually.');
@@ -314,7 +321,7 @@ export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
             <button
               className="btn btn-primary"
               disabled={!description.trim()}
-              onClick={() => runAnalysis({ text: description })}
+              onClick={() => runAnalysis({ text: description, lookupQuery: description })}
             >
               Analyze ✨
             </button>
