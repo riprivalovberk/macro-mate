@@ -5,7 +5,7 @@ import { ItemFields, type EditableFood } from '../components/ItemFields';
 import { MacroBar } from '../components/MacroBar';
 import { Ring } from '../components/Ring';
 import { Sheet } from '../components/Sheet';
-import { deleteEntry, entriesForDate, totals, updateEntry } from '../lib/db';
+import { addWater, deleteEntry, entriesForDate, totals, updateEntry, waterForDate } from '../lib/db';
 import { addDays, friendlyDate, todayKey } from '../lib/dates';
 import { macroShares, nutritionScore } from '../lib/score';
 import { useSettings } from '../lib/settings';
@@ -41,6 +41,7 @@ interface TodayProps {
 export function Today({ date, onDateChange }: TodayProps) {
   const settings = useSettings();
   const entries = useLiveQuery(() => entriesForDate(date), [date]) ?? [];
+  const waterCups = useLiveQuery(() => waterForDate(date), [date])?.cups ?? 0;
   const [adding, setAdding] = useState<Meal | null>(null);
   const [editing, setEditing] = useState<Entry | null>(null);
   const [metric, setMetric] = useState<keyof MacroSet>(() => {
@@ -134,6 +135,41 @@ export function Today({ date, onDateChange }: TodayProps) {
             </div>
           </div>
         </div>
+        {settings.trackWater && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              marginTop: 12,
+              background: 'var(--bg-sunken)',
+              borderRadius: 12,
+              padding: '8px 12px',
+            }}
+          >
+            <span style={{ fontSize: 16 }}>💧</span>
+            <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>
+              Water{' '}
+              <span style={{ color: waterCups >= settings.waterGoal ? 'var(--fat)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                {waterCups} / {settings.waterGoal} cups
+              </span>
+            </span>
+            <button
+              aria-label="Remove a cup of water"
+              onClick={() => addWater(date, -1)}
+              style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--bg-elev)', boxShadow: 'var(--shadow)', fontSize: 17, color: 'var(--accent)' }}
+            >
+              −
+            </button>
+            <button
+              aria-label="Add a cup of water"
+              onClick={() => addWater(date, 1)}
+              style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--bg-elev)', boxShadow: 'var(--shadow)', fontSize: 17, color: 'var(--accent)' }}
+            >
+              ＋
+            </button>
+          </div>
+        )}
       </div>
 
       {entries.length > 0 && (

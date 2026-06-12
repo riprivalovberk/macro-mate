@@ -80,6 +80,15 @@ export interface Settings {
   model: string;
   profile: Profile | null;
   goals: Goals;
+  /** Water tracking is opt-in to keep the dashboard uncluttered. */
+  trackWater: boolean;
+  /** Daily water goal in cups (8 oz each). */
+  waterGoal: number;
+}
+
+export interface WaterDay {
+  date: string; // YYYY-MM-DD
+  cups: number;
 }
 
 export const MODEL_OPTIONS = [

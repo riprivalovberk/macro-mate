@@ -79,6 +79,40 @@ export function SettingsPage() {
         </div>
         <div className="settings-row">
           <div>
+            <div className="sr-label">Track water</div>
+            <div className="sr-sub">Adds a slim 💧 row to the dashboard</div>
+          </div>
+          <button
+            role="switch"
+            aria-checked={settings.trackWater}
+            style={{ color: 'var(--accent)', fontWeight: 600 }}
+            onClick={() => updateSettings({ trackWater: !settings.trackWater })}
+          >
+            {settings.trackWater ? 'On' : 'Off'}
+          </button>
+        </div>
+        {settings.trackWater && (
+          <div className="settings-row">
+            <div>
+              <div className="sr-label">Water goal</div>
+              <div className="sr-sub">Cups per day (8 oz each)</div>
+            </div>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={30}
+              style={{ width: 76, textAlign: 'center' }}
+              value={settings.waterGoal || ''}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isFinite(n) && n >= 0) updateSettings({ waterGoal: Math.round(n) });
+              }}
+            />
+          </div>
+        )}
+        <div className="settings-row">
+          <div>
             <div className="sr-label">Recalculate from profile</div>
             <div className="sr-sub">Age, weight, activity, goal</div>
           </div>

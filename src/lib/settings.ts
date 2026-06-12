@@ -11,6 +11,8 @@ export const DEFAULT_SETTINGS: Settings = {
   model: 'claude-opus-4-8',
   profile: null,
   goals: { ...DEFAULT_GOALS },
+  trackWater: false,
+  waterGoal: 8,
 };
 
 let cached: Settings | null = null;
