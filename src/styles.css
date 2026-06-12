@@ -426,6 +426,8 @@ h1, h2, h3 { margin: 0; }
   color: var(--text-dim);
 }
 .seg button.active { background: var(--bg-elev); color: var(--text); box-shadow: var(--shadow); }
+/* meal picker has 5 segments — shrink so Breakfast/Liquids fit on small screens */
+.seg.seg-meals button { font-size: 11.5px; padding: 8px 1px; }
 
 .error-box {
   background: rgba(255, 59, 48, 0.12);

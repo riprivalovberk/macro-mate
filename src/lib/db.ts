@@ -1,10 +1,20 @@
 import Dexie, { type Table } from 'dexie';
-import { EMPTY_MACROS, MACRO_KEYS, type Entry, type MacroSet, type Meal, type Settings, type WaterDay } from '../types';
+import {
+  EMPTY_MACROS,
+  MACRO_KEYS,
+  type AlcoholDay,
+  type Entry,
+  type MacroSet,
+  type Meal,
+  type Settings,
+  type WaterDay,
+} from '../types';
 import { loadSettings, saveSettings } from './settings';
 
 class MacroMateDB extends Dexie {
   entries!: Table<Entry, number>;
   water!: Table<WaterDay, string>;
+  alcohol!: Table<AlcoholDay, string>;
 
   constructor() {
     super('macro-mate');
@@ -14,6 +24,11 @@ class MacroMateDB extends Dexie {
     this.version(2).stores({
       entries: '++id, date, name, createdAt',
       water: 'date',
+    });
+    this.version(3).stores({
+      entries: '++id, date, name, createdAt',
+      water: 'date',
+      alcohol: 'date',
     });
   }
 }
@@ -121,6 +136,22 @@ export async function addWater(date: string, delta: number): Promise<number> {
   });
 }
 
+// --- Alcohol ---
+
+export function alcoholForDate(date: string): Promise<AlcoholDay | undefined> {
+  return db.alcohol.get(date);
+}
+
+/** Add (or subtract) standard drinks for a day, clamped at 0. */
+export async function addDrinks(date: string, delta: number): Promise<number> {
+  return db.transaction('rw', db.alcohol, async () => {
+    const current = (await db.alcohol.get(date))?.drinks ?? 0;
+    const drinks = Math.max(0, current + delta);
+    await db.alcohol.put({ date, drinks });
+    return drinks;
+  });
+}
+
 // --- Backup ---
 
 export interface Backup {
@@ -130,6 +161,7 @@ export interface Backup {
   settings: Settings;
   entries: Entry[];
   water?: WaterDay[];
+  alcohol?: AlcoholDay[];
 }
 
 export async function exportBackup(): Promise<string> {
@@ -140,6 +172,7 @@ export async function exportBackup(): Promise<string> {
     settings: loadSettings(),
     entries: await db.entries.toArray(),
     water: await db.water.toArray(),
+    alcohol: await db.alcohol.toArray(),
   };
   return JSON.stringify(backup, null, 2);
 }
@@ -155,11 +188,13 @@ export async function importBackup(json: string): Promise<{ entries: number }> {
   if (backup?.app !== 'macro-mate' || !Array.isArray(backup.entries)) {
     throw new Error('That file is not a Macro Mate backup.');
   }
-  await db.transaction('rw', db.entries, db.water, async () => {
+  await db.transaction('rw', db.entries, db.water, db.alcohol, async () => {
     await db.entries.clear();
     await db.entries.bulkAdd(backup.entries.map(({ id: _id, ...rest }) => rest as Entry));
     await db.water.clear();
     if (Array.isArray(backup.water)) await db.water.bulkPut(backup.water);
+    await db.alcohol.clear();
+    if (Array.isArray(backup.alcohol)) await db.alcohol.bulkPut(backup.alcohol);
   });
   if (backup.settings) saveSettings(backup.settings);
   return { entries: backup.entries.length };

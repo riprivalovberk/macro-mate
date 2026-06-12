@@ -1,12 +1,13 @@
-export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snacks';
+export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snacks' | 'liquids';
 
-export const MEALS: Meal[] = ['breakfast', 'lunch', 'dinner', 'snacks'];
+export const MEALS: Meal[] = ['breakfast', 'lunch', 'dinner', 'snacks', 'liquids'];
 
 export const MEAL_LABELS: Record<Meal, string> = {
   breakfast: 'Breakfast',
   lunch: 'Lunch',
   dinner: 'Dinner',
   snacks: 'Snacks',
+  liquids: 'Liquids',
 };
 
 /** All tracked nutrients. kcal in calories, sodium in mg, everything else in grams. */
@@ -84,11 +85,20 @@ export interface Settings {
   trackWater: boolean;
   /** Daily water goal in cups (8 oz each). */
   waterGoal: number;
+  /** Alcohol tracking is opt-in, like water. */
+  trackAlcohol: boolean;
+  /** Daily limit in standard drinks; going over lowers the nutrition score. */
+  alcoholLimit: number;
 }
 
 export interface WaterDay {
   date: string; // YYYY-MM-DD
   cups: number;
+}
+
+export interface AlcoholDay {
+  date: string; // YYYY-MM-DD
+  drinks: number;
 }
 
 export const MODEL_OPTIONS = [

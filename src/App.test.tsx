@@ -27,6 +27,7 @@ describe('App', () => {
     expect(screen.getByText('Lunch')).toBeInTheDocument();
     expect(screen.getByText('Dinner')).toBeInTheDocument();
     expect(screen.getByText('Snacks')).toBeInTheDocument();
+    expect(screen.getByText('Liquids')).toBeInTheDocument();
   });
 
   it('renders logged entries with their macros', async () => {
