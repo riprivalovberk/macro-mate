@@ -4,6 +4,8 @@ import type { Analysis, FoodItem } from '../types';
 const SYSTEM_PROMPT = `You are the nutrition engine inside Macro Mate, a personal macro-tracking app.
 The user sends a photo of food, a screenshot, and/or a text description, and you estimate the nutrition of what THEY are about to eat.
 
+Before anything else, decide whether the input actually contains food, drink, or readable nutrition information. If it does NOT — e.g. a person, a pet, a landscape, a document, a screenshot unrelated to food, or any random object — do not try to estimate anything and do not deliberate at length: immediately return {"items": [], "notes": "No food identified in the image."} and stop.
+
 Input types you must handle:
 - A photo of a meal or food item: identify each distinct food, estimate the portion size from visual cues (plate size, utensils, packaging), and estimate nutrition for that portion.
 - A screenshot of a nutrition label or of macro numbers (from another app, a menu, a website): read the values directly instead of estimating. If a serving count is ambiguous, assume one serving and say so in notes.
@@ -20,7 +22,7 @@ Rules:
 - confidence: "high" when reading a label or the food is unambiguous, "medium" for typical photo estimates, "low" when the portion or preparation is largely a guess.
 - Use "notes" for one short sentence of caveats worth knowing (hidden oils, dressing assumptions, ambiguous serving count). Empty string if nothing useful.
 - When asked to revise a previous estimate, apply the user's feedback and any newly provided images, and return the COMPLETE corrected item list (including items that didn't change).
-- If the image contains no food or readable nutrition info, return an empty items array and explain in notes.`;
+- If the image contains no food or readable nutrition info, return an empty items array and say so briefly in notes (e.g. "No food identified in the image.").`;
 
 const ANALYSIS_SCHEMA = {
   type: 'object',
@@ -116,6 +118,22 @@ export function parseAnalysis(raw: string): Analysis {
   return { items, notes: String(obj.notes ?? '') };
 }
 
+/**
+ * Map a response stop reason to a user-facing error, or null when the response
+ * is usable. A non-food image can make the model think until it exhausts the
+ * token budget (`max_tokens`), which otherwise surfaces as a confusing
+ * "no answer" / "unreadable" error after a long, token-burning wait.
+ */
+export function stopReasonError(stopReason: string | null | undefined): string | null {
+  if (stopReason === 'refusal') {
+    return 'The AI declined to analyze this image. Try a different photo.';
+  }
+  if (stopReason === 'max_tokens') {
+    return "Couldn't identify the food — the analysis ran long without finishing. Try a clearer photo or describe it instead.";
+  }
+  return null;
+}
+
 function supportsAdaptiveThinking(model: string): boolean {
   return /opus-4-[6-9]|opus-4-7|sonnet-4-6|fable|mythos/.test(model);
 }
@@ -185,8 +203,9 @@ export async function analyzeFood(input: AnalyzeInput): Promise<Analysis> {
     throw err;
   }
 
-  if (response.stop_reason === 'refusal') {
-    throw new Error('The AI declined to analyze this image. Try a different photo.');
+  const stopError = stopReasonError(response.stop_reason);
+  if (stopError) {
+    throw new Error(stopError);
   }
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {

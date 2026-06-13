@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAnalysis } from './ai';
+import { parseAnalysis, stopReasonError } from './ai';
 
 const validItem = {
   name: 'Grilled chicken breast',
@@ -89,5 +89,21 @@ describe('parseAnalysis', () => {
       JSON.stringify({ items: [{ ...validItem, fat: 7.2345 }], notes: '' }),
     );
     expect(result.items[0].fat).toBe(7.2);
+  });
+});
+
+describe('stopReasonError', () => {
+  it('returns null for a normal completion', () => {
+    expect(stopReasonError('end_turn')).toBeNull();
+    expect(stopReasonError(null)).toBeNull();
+    expect(stopReasonError(undefined)).toBeNull();
+  });
+
+  it('explains a max_tokens stop (e.g. token-burning non-food image)', () => {
+    expect(stopReasonError('max_tokens')).toMatch(/ran long|clearer photo/i);
+  });
+
+  it('explains a refusal', () => {
+    expect(stopReasonError('refusal')).toMatch(/declined/i);
   });
 });
