@@ -53,3 +53,16 @@ Accumulated facts, decisions, constraints, and next steps. Newest entries at the
 ### Decisions
 - Alcohol is a simple drinks tally like water (not per-entry alcohol grams); caloric drinks (beer, wine, cocktails) can additionally be logged as food entries under Liquids for their kcal/carbs.
 - Score extras use earned/possible normalization rather than reshuffling the base 100-point weights.
+
+## Project Memory Update — 2026-06-13 (session 6: non-food image bug)
+
+### Bug fixed
+- Non-food photos (`src/lib/ai.ts`) used to burn tokens and never surface "no food identified." Two causes: (1) the system prompt framed the task as always estimating food, so with adaptive thinking on `claude-opus-4-8` (`max_tokens: 8000`) the model deliberated until it hit `max_tokens`; (2) `analyzeFood` never checked `stop_reason === 'max_tokens'`, so a truncated/thinking-only response surfaced as a confusing "no answer"/"unreadable" error after a long wait.
+
+### Changes
+- System prompt now opens with a short-circuit rule: decide first whether the input contains food/drink/nutrition info; if not, immediately return `{"items": [], "notes": "No food identified in the image."}` without deliberating. The UI (`AddFlow.tsx:97`) already shows `analysis.notes` for empty items.
+- New exported pure helper `stopReasonError(stopReason)` in `ai.ts` maps `refusal` and `max_tokens` to user-facing messages (max_tokens → "Couldn't identify the food — the analysis ran long…"). `analyzeFood` now uses it (replaces the old inline refusal check).
+- Tests: +3 in `ai.test.ts` for `stopReasonError`; total 86 (was 83).
+
+### Next steps
+- Backlog unchanged: weekly score trend, streaks, "finish the day" AI suggestions; extend grounding to photo flow when a brand is visible.
