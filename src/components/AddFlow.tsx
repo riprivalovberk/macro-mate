@@ -15,6 +15,8 @@ interface AddFlowProps {
   initialMeal: Meal;
   onClose: () => void;
   onSaved: () => void;
+  /** Pre-seeded items that start the flow in the review step (e.g. from a URL import). */
+  initialItems?: EditableFood[];
 }
 
 const BLANK_ITEM: EditableFood = {
@@ -30,15 +32,15 @@ const BLANK_ITEM: EditableFood = {
   sodium: 0,
 };
 
-export function AddFlow({ date, initialMeal, onClose, onSaved }: AddFlowProps) {
+export function AddFlow({ date, initialMeal, onClose, onSaved, initialItems }: AddFlowProps) {
   const settings = useSettings();
-  const [step, setStep] = useState<Step>('choose');
+  const [step, setStep] = useState<Step>(initialItems?.length ? 'review' : 'choose');
   const [meal, setMeal] = useState<Meal>(initialMeal);
   const [error, setError] = useState('');
   const [images, setImages] = useState<EncodedImage[]>([]);
   const [hint, setHint] = useState('');
   const [description, setDescription] = useState('');
-  const [items, setItems] = useState<EditableFood[]>([]);
+  const [items, setItems] = useState<EditableFood[]>(initialItems ?? []);
   const [notes, setNotes] = useState('');
   const [quick, setQuick] = useState<QuickFood[]>([]);
   const [savedFlash, setSavedFlash] = useState('');

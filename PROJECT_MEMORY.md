@@ -66,3 +66,25 @@ Accumulated facts, decisions, constraints, and next steps. Newest entries at the
 
 ### Next steps
 - Backlog unchanged: weekly score trend, streaks, "finish the day" AI suggestions; extend grounding to photo flow when a brand is visible.
+
+## Project Memory Update — 2026-10-06 (session 7: Meta AI / external URL import)
+
+### New feature
+- v1.6: URL-import endpoint (`?add=1&name=...`) so Meta AI (or any external tool) can generate a link that opens MacroMate straight into the review screen pre-filled with a food entry.
+- New `src/lib/addparams.ts`: `parseAddParams(search)` parses URL query params → `{ item: EditableFood, meal: Meal }`.
+- `App.tsx`: calls `consumeAddParams()` once on load (reads + clears URL so refresh doesn't re-trigger). Passes result as `initialAdd` to `Today`.
+- `Today.tsx`: accepts `initialAdd?: AddParams | null`; auto-opens `AddFlow` in the right meal pre-seeded.
+- `AddFlow.tsx`: accepts `initialItems?: EditableFood[]`; starts in `'review'` step when populated.
+- Tests: +9 in `addparams.test.ts`; total 95.
+
+### URL schema
+```
+https://riprivalovberk.github.io/macro-mate/?add=1
+  &name=Grilled+Chicken&emoji=🍗&portion=200g
+  &kcal=330&protein=62&carbs=0&fat=7.2&fiber=0&sugar=0&sodium=150
+  &meal=dinner
+```
+meal defaults to `snacks`; all nutrients default to 0 when absent.
+
+### Next steps
+- Backlog: weekly score trend, streaks, "finish the day" AI suggestions; grounding in photo flow; share Meta AI prompt template with user.
