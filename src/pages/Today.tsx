@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AddFlow } from '../components/AddFlow';
+import type { AddParams } from '../lib/addparams';
 import { ItemFields, type EditableFood } from '../components/ItemFields';
 import { MacroBar } from '../components/MacroBar';
 import { Ring } from '../components/Ring';
@@ -36,14 +37,23 @@ function defaultMealForNow(): Meal {
 interface TodayProps {
   date: string;
   onDateChange: (d: string) => void;
+  initialAdd?: AddParams | null;
 }
 
-export function Today({ date, onDateChange }: TodayProps) {
+export function Today({ date, onDateChange, initialAdd }: TodayProps) {
   const settings = useSettings();
   const entries = useLiveQuery(() => entriesForDate(date), [date]) ?? [];
   const waterCups = useLiveQuery(() => waterForDate(date), [date])?.cups ?? 0;
   const drinks = useLiveQuery(() => alcoholForDate(date), [date])?.drinks ?? 0;
-  const [adding, setAdding] = useState<Meal | null>(null);
+  const [adding, setAdding] = useState<Meal | null>(initialAdd?.meal ?? null);
+  const [addInitialItems, setAddInitialItems] = useState(initialAdd?.item ? [initialAdd.item] : undefined);
+
+  useEffect(() => {
+    if (initialAdd) {
+      setAdding(initialAdd.meal);
+      setAddInitialItems([initialAdd.item]);
+    }
+  }, []);
   const [editing, setEditing] = useState<Entry | null>(null);
   const [metric, setMetric] = useState<keyof MacroSet>(() => {
     const saved = localStorage.getItem(METRIC_KEY) as keyof MacroSet | null;
@@ -237,7 +247,13 @@ export function Today({ date, onDateChange }: TodayProps) {
       </button>
 
       {adding && (
-        <AddFlow date={date} initialMeal={adding} onClose={() => setAdding(null)} onSaved={() => {}} />
+        <AddFlow
+          date={date}
+          initialMeal={adding}
+          onClose={() => { setAdding(null); setAddInitialItems(undefined); }}
+          onSaved={() => {}}
+          initialItems={addInitialItems}
+        />
       )}
 
       {editing && <EditEntrySheet entry={editing} onClose={() => setEditing(null)} />}
